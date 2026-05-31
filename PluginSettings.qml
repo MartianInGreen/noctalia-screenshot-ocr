@@ -64,6 +64,10 @@ ColumnLayout {
     writeProc.running = true
   }
 
+  function collectorText(collector) {
+    return String(collector.text || "").trim()
+  }
+
   Process {
     id: writeProc
     command: []
@@ -95,7 +99,7 @@ ColumnLayout {
     stdout: StdioCollector { id: readOut }
 
     onExited: function() {
-      var val = readOut.readAll().trim()
+      var val = collectorText(readOut)
       if (val.length > 0) {
         apiKeyInput.text = val
       }

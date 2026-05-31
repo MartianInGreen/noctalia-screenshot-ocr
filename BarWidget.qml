@@ -22,7 +22,7 @@ Item {
   readonly property real capsuleHeight: Style.getCapsuleHeightForScreen(screenName)
   readonly property real barFontSize: Style.getBarFontSizeForScreen(screenName)
 
-  readonly property real contentWidth: iconWidget.implicitWidth + Style.marginM * 2
+  readonly property real contentWidth: Math.max(capsuleHeight, iconWidget.implicitWidth + Style.marginM * 2)
   readonly property real contentHeight: capsuleHeight
 
   implicitWidth: contentWidth
@@ -56,11 +56,36 @@ Item {
     anchors.fill: parent
     hoverEnabled: true
     cursorShape: Qt.PointingHandCursor
+    acceptedButtons: Qt.LeftButton
 
-    onClicked: {
+    onClicked: function(mouse) {
+      if (mouse.button !== Qt.LeftButton) return
       if (ocrProc.running || keyReader.running) return
+
+      Logger.i("ScreenshotOCR", "Bar icon clicked")
+
+      var savedKey = pluginApi?.pluginSettings?.mistralApiKey || ""
+      if (savedKey.trim().length > 0) {
+        startOcr(savedKey.trim())
+        return
+      }
+
       keyReader.running = true
     }
+  }
+
+  function startOcr(key) {
+    Logger.i("ScreenshotOCR", "Starting OCR script: " + root.scriptPath)
+    if (Qt.platform.os === "linux") {
+      ocrProc.command = ["niri", "msg", "action", "spawn", "--", "env", "SCREENSHOT_OCR_NOTIFY=1", "bash", root.scriptPath, key]
+    } else {
+      ocrProc.command = ["bash", root.scriptPath, key]
+    }
+    ocrProc.running = true
+  }
+
+  function collectorText(collector) {
+    return String(collector?.text || "").trim()
   }
 
   // ── Read .apikey file ──────────────────────────────────────────
@@ -71,13 +96,12 @@ Item {
     stdout: StdioCollector { id: keyOut }
 
     onExited: function() {
-      var key = keyOut.readAll().trim()
+      var key = collectorText(keyOut)
       if (!key) {
         ToastService.showNotice("Set Mistral API key in plugin settings first")
         return
       }
-      ocrProc.command = ["sh", root.scriptPath, key]
-      ocrProc.running = true
+      startOcr(key)
     }
   }
 
@@ -90,15 +114,6 @@ Item {
     stderr: StdioCollector { id: serr }
 
     onExited: function(code) {
-      var out = sout.readAll().trim()
-      var err = serr.readAll().trim()
-      if (code === 0 && out.length > 0) {
-        ToastService.showNotice("OCR: " + out.length + " chars \u2192 clipboard")
-      } else if (code !== 0) {
-        if (err.indexOf("cancelled") < 0) {
-          ToastService.showNotice("OCR failed: " + err.substring(0, 80))
-        }
-      }
     }
   }
 

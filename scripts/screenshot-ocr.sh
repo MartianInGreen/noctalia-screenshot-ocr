@@ -6,10 +6,18 @@ set -euo pipefail
 
 API_KEY="${1:-}"
 SCREENSHOT_FILE="/tmp/noctalia-ocr-$$.png"
+PAYLOAD_FILE="/tmp/noctalia-ocr-$$.json"
+
+notify() {
+    if [ "${SCREENSHOT_OCR_NOTIFY:-}" = "1" ] && command -v notify-send &>/dev/null; then
+        notify-send "Screenshot OCR" "$*" || true
+    fi
+}
 
 die() {
     echo "$*" >&2
-    rm -f "$SCREENSHOT_FILE"
+    notify "$*"
+    rm -f "$SCREENSHOT_FILE" "$PAYLOAD_FILE"
     exit 1
 }
 
@@ -18,20 +26,13 @@ die() {
 
 # ── Take screenshot (region select) ────────────────────────────────
 if command -v grim &>/dev/null && command -v slurp &>/dev/null; then
-    GEO=$(slurp -d 2>/dev/null) || die "Screenshot cancelled"
+    GEO=$(slurp -d 2>/dev/null) || die "Region selection cancelled"
+    [ -n "$GEO" ] || die "Region selection returned no geometry"
     grim -g "$GEO" "$SCREENSHOT_FILE"
 elif command -v grim &>/dev/null; then
     grim "$SCREENSHOT_FILE"
-elif command -v niri &>/dev/null; then
-    rm -f "$SCREENSHOT_FILE"
-    niri msg action screenshot --path "$SCREENSHOT_FILE" &
-    for i in $(seq 1 120); do
-        [ -s "$SCREENSHOT_FILE" ] && { sleep 0.5; break; }
-        sleep 0.5
-    done
-    [ -s "$SCREENSHOT_FILE" ] || die "Screenshot timed out or cancelled"
 else
-    die "No screenshot tool found (need grim+slurp or niri)"
+    die "No screenshot tool found (need grim+slurp)"
 fi
 
 # ── Resize if too large (Mistral rejects > ~800KB base64) ──────────
@@ -58,7 +59,7 @@ if [ ${#B64} -gt 800000 ]; then
 fi
 
 # ── Call Mistral OCR API ───────────────────────────────────────────
-PAYLOAD=$(cat <<ENDJSON
+cat > "$PAYLOAD_FILE" <<ENDJSON
 {
   "model": "mistral-ocr-latest",
   "document": {
@@ -68,12 +69,11 @@ PAYLOAD=$(cat <<ENDJSON
   "include_image_base64": false
 }
 ENDJSON
-)
 
 RESPONSE=$(curl -s -X POST "https://api.mistral.ai/v1/ocr" \
     -H "Authorization: Bearer ${API_KEY}" \
     -H "Content-Type: application/json" \
-    -d "$PAYLOAD")
+    --data-binary "@${PAYLOAD_FILE}")
 
 # ── Extract text ───────────────────────────────────────────────────
 if command -v jq &>/dev/null; then
@@ -93,7 +93,8 @@ if command -v wl-copy &>/dev/null; then
 fi
 
 # ── Cleanup ────────────────────────────────────────────────────────
-rm -f "$SCREENSHOT_FILE"
+rm -f "$SCREENSHOT_FILE" "$PAYLOAD_FILE"
 
 # Output text for the plugin to read back (shown in toast)
+notify "Copied ${#TEXT} characters to clipboard"
 echo "$TEXT"
