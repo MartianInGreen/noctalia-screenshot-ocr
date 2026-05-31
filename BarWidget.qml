@@ -28,6 +28,9 @@ Item {
   implicitWidth: contentWidth
   implicitHeight: contentHeight
 
+  property string keyFilePath: ""
+  property string scriptPath: ""
+
   Rectangle {
     id: visualCapsule
     x: Style.pixelAlignCenter(parent.width, width)
@@ -55,21 +58,30 @@ Item {
     cursorShape: Qt.PointingHandCursor
 
     onClicked: {
-      var apiKey = pluginApi?.pluginSettings?.mistralApiKey || ""
-      if (!apiKey) {
+      if (ocrProc.running || keyReader.running) return
+      keyReader.running = true
+    }
+  }
+
+  // ── Read .apikey file ──────────────────────────────────────────
+  Process {
+    id: keyReader
+    command: []
+    running: false
+    stdout: StdioCollector { id: keyOut }
+
+    onExited: function() {
+      var key = keyOut.readAll().trim()
+      if (!key) {
         ToastService.showNotice("Set Mistral API key in plugin settings first")
         return
       }
-      if (ocrProc.running) return
-
-      // Build command with API key as arg
-      ocrProc.command = ["sh", scriptPath, apiKey]
+      ocrProc.command = ["sh", root.scriptPath, key]
       ocrProc.running = true
     }
   }
 
-  property string scriptPath: ""
-
+  // ── Run the screenshot+OCR script ───────────────────────────────
   Process {
     id: ocrProc
     running: false
@@ -83,10 +95,8 @@ Item {
       if (code === 0 && out.length > 0) {
         ToastService.showNotice("OCR: " + out.length + " chars \u2192 clipboard")
       } else if (code !== 0) {
-        var isCancel = err.indexOf("cancelled") >= 0
-        if (!isCancel) {
-          var msg = err.substring(0, 80)
-          ToastService.showNotice("OCR failed: " + msg)
+        if (err.indexOf("cancelled") < 0) {
+          ToastService.showNotice("OCR failed: " + err.substring(0, 80))
         }
       }
     }
@@ -97,7 +107,9 @@ Item {
     if (!dir) {
       dir = String(Qt.resolvedUrl(".")).replace("file://", "")
     }
-    scriptPath = dir + "/scripts/screenshot-ocr.sh"
-    Logger.i("ScreenshotOCR", "Ready. Script:", scriptPath)
+    root.keyFilePath = dir + "/.apikey"
+    root.scriptPath = dir + "/scripts/screenshot-ocr.sh"
+    keyReader.command = ["sh", "-c", "cat '" + root.keyFilePath + "' 2>/dev/null || true"]
+    Logger.i("ScreenshotOCR", "Ready")
   }
 }
