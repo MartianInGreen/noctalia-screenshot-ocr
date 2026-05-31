@@ -10,7 +10,7 @@
   "tags": ["Bar"],
   "entryPoints": {
     "barWidget": "BarWidget.qml",
-    "settings": "Settings.qml"
+    "settings": "PluginSettings.qml"
   },
   "dependencies": {
     "plugins": []
