@@ -3,7 +3,7 @@
   "name": "Screenshot OCR (Mistral)",
   "version": "1.0.0",
   "minNoctaliaVersion": "4.0.0",
-  "author": "Hermes <hermes@rennersh.de>",
+  "author": "MartianHannah <git@rennersh.de>",
   "license": "MIT",
   "repository": "https://github.com/MartianInGreen/noctalia-plugins",
   "description": "Click to take a region screenshot, OCR it with Mistral AI, and copy text to clipboard. Requires: grim, slurp, wl-copy, curl, jq. Set MISTRAL_API_KEY in plugin settings.",
