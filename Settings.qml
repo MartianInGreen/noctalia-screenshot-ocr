@@ -35,7 +35,6 @@ Item {
       Layout.fillWidth: true
       text: pluginApi?.pluginSettings?.mistralApiKey || ""
       placeholderText: "sk-..."
-      echoMode: TextInput.Password
 
       onTextChanged: {
         if (pluginApi) {
