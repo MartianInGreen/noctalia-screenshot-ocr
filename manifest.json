@@ -7,7 +7,9 @@
   "license": "MIT",
   "repository": "https://github.com/MartianInGreen/noctalia-screenshot-ocr",
   "description": "Click to take a region screenshot, OCR it with Mistral AI, and copy text to clipboard. Requires: grim, slurp, wl-copy, curl, jq. Set MISTRAL_API_KEY in plugin settings.",
-  "tags": ["Bar"],
+  "tags": [
+    "Bar"
+  ],
   "entryPoints": {
     "barWidget": "BarWidget.qml",
     "settings": "PluginSettings.qml"
