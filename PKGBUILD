@@ -11,7 +11,7 @@ depends=('bash' 'curl' 'grim' 'jq' 'noctalia-shell>=4.0.0' 'slurp' 'wl-clipboard
 optdepends=('imagemagick: resize large screenshots before OCR')
 _source_url="https://raw.githubusercontent.com/MartianInGreen/noctalia-screenshot-ocr/v${pkgver}"
 source=("BarWidget.qml::$_source_url/BarWidget.qml"
-        "Settings.qml::$_source_url/Settings.qml"
+        "PluginSettings.qml::$_source_url/PluginSettings.qml"
         "manifest.json::$_source_url/manifest.json"
         "README.md::$_source_url/README.md"
         "screenshot-ocr.sh::$_source_url/scripts/screenshot-ocr.sh"
@@ -27,7 +27,7 @@ package() {
   local plugin_dir="$pkgdir/usr/share/noctalia/plugins/screenshot-ocr"
 
   install -Dm644 BarWidget.qml "$plugin_dir/BarWidget.qml"
-  install -Dm644 Settings.qml "$plugin_dir/Settings.qml"
+  install -Dm644 PluginSettings.qml "$plugin_dir/PluginSettings.qml"
   install -Dm644 manifest.json "$plugin_dir/manifest.json"
   install -Dm644 README.md "$plugin_dir/README.md"
   install -Dm755 screenshot-ocr.sh "$plugin_dir/scripts/screenshot-ocr.sh"

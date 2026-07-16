@@ -33,6 +33,9 @@ jobs:
           fetch-depth: 0
           ref: ${{ github.event_name == 'workflow_dispatch' && github.event.repository.default_branch || github.ref }}
 
+      - name: Trust repository checkout
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
       - name: Create package builder
         run: useradd --create-home builder
 
@@ -62,7 +65,7 @@ jobs:
           mv manifest.json.tmp manifest.json
 
           mkdir .release-sources
-          cp BarWidget.qml Settings.qml manifest.json README.md LICENSE .release-sources/
+          cp BarWidget.qml PluginSettings.qml manifest.json README.md LICENSE .release-sources/
           cp scripts/screenshot-ocr.sh .release-sources/screenshot-ocr.sh
           chown -R builder:builder PKGBUILD .release-sources
           runuser -u builder -- env SRCDEST="$PWD/.release-sources" updpkgsums
