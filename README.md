@@ -21,10 +21,21 @@ sudo pacman -S grim slurp wl-clipboard curl jq imagemagick
 
 ### Arch package
 
-Install a package from the GitHub release, then expose the package-managed plugin to Noctalia:
+Install the package from the [AUR](https://aur.archlinux.org/packages/noctalia-plugin-screenshot-ocr):
+
+```bash
+yay -S noctalia-plugin-screenshot-ocr
+```
+
+Alternatively, install a package from the GitHub release:
 
 ```bash
 sudo pacman -U noctalia-plugin-screenshot-ocr-*.pkg.tar.zst
+```
+
+Then expose the package-managed plugin to Noctalia:
+
+```bash
 mkdir -p ~/.config/noctalia/plugins
 ln -s /usr/share/noctalia/plugins/screenshot-ocr ~/.config/noctalia/plugins/screenshot-ocr
 ```
