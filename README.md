@@ -1,6 +1,6 @@
 # Screenshot OCR (Mistral)
 
-Noctalia Shell bar widget plugin. Click the camera icon in your bar, select a screen region, and the text gets OCR'd by Mistral AI and copied to your Wayland clipboard.
+Noctalia Shell bar widget plugin. Click the camera icon in your bar, select a screen region, and the text gets OCR'd by Mistral OCR 4 and copied to your Wayland clipboard.
 
 ## Requirements
 
@@ -18,6 +18,20 @@ sudo pacman -S grim slurp wl-clipboard curl jq imagemagick
 ```
 
 ## Installation
+
+### Arch package
+
+Install a package from the GitHub release, then expose the package-managed plugin to Noctalia:
+
+```bash
+sudo pacman -U noctalia-plugin-screenshot-ocr-*.pkg.tar.zst
+mkdir -p ~/.config/noctalia/plugins
+ln -s /usr/share/noctalia/plugins/screenshot-ocr ~/.config/noctalia/plugins/screenshot-ocr
+```
+
+Register the plugin in `~/.config/noctalia/plugins.json`, then restart Noctalia.
+
+### From source
 
 **1. Clone or copy the plugin into your Noctalia plugins directory:**
 

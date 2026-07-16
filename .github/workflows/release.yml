@@ -1,0 +1,124 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version (for example, 1.2.0)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    container: archlinux:base-devel
+
+    steps:
+      - name: Install workflow dependencies
+        run: pacman -Syu --noconfirm git jq pacman-contrib
+
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event_name == 'workflow_dispatch' && github.event.repository.default_branch || github.ref }}
+
+      - name: Create package builder
+        run: useradd --create-home builder
+
+      - name: Prepare release metadata
+        if: github.event_name == 'workflow_dispatch'
+        id: prepare
+        shell: bash
+        env:
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          VERSION_INPUT: ${{ inputs.version }}
+        run: |
+          version="${VERSION_INPUT#v}"
+          tag="v${version}"
+
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            printf 'Invalid release version: %s\n' "$VERSION_INPUT" >&2
+            exit 1
+          fi
+          if git show-ref --verify --quiet "refs/tags/$tag"; then
+            printf 'Tag %s already exists.\n' "$tag" >&2
+            exit 1
+          fi
+
+          sed -i -E "s/^pkgver=.*/pkgver=$version/" PKGBUILD
+          sed -i -E 's/^pkgrel=.*/pkgrel=1/' PKGBUILD
+          jq --arg version "$version" '.version = $version' manifest.json > manifest.json.tmp
+          mv manifest.json.tmp manifest.json
+
+          mkdir .release-sources
+          cp BarWidget.qml Settings.qml manifest.json README.md LICENSE .release-sources/
+          cp scripts/screenshot-ocr.sh .release-sources/screenshot-ocr.sh
+          chown -R builder:builder PKGBUILD .release-sources
+          runuser -u builder -- env SRCDEST="$PWD/.release-sources" updpkgsums
+          runuser -u builder -- makepkg --printsrcinfo > .SRCINFO
+          rm -rf .release-sources
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add PKGBUILD .SRCINFO manifest.json
+          if ! git diff --cached --quiet; then
+            git commit -m "Release $tag"
+          fi
+          git tag --annotate "$tag" --message "Release $tag"
+          git push --atomic origin "HEAD:refs/heads/$DEFAULT_BRANCH" "refs/tags/$tag"
+
+          printf 'tag=%s\n' "$tag" >> "$GITHUB_OUTPUT"
+
+      - name: Resolve release version
+        id: release
+        shell: bash
+        env:
+          PREPARED_TAG: ${{ steps.prepare.outputs.tag }}
+        run: |
+          tag="${PREPARED_TAG:-$GITHUB_REF_NAME}"
+          version="${tag#v}"
+          printf 'tag=%s\nversion=%s\n' "$tag" "$version" >> "$GITHUB_OUTPUT"
+
+      - name: Validate release version
+        shell: bash
+        env:
+          RELEASE_VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          pkgbuild_version="$(bash -c 'source PKGBUILD; printf "%s" "$pkgver"')"
+          manifest_version="$(jq -r .version manifest.json)"
+
+          if [[ "$RELEASE_VERSION" != "$pkgbuild_version" || "$RELEASE_VERSION" != "$manifest_version" ]]; then
+            printf 'Release version %s must match PKGBUILD (%s) and manifest.json (%s).\n' \
+              "$RELEASE_VERSION" "$pkgbuild_version" "$manifest_version" >&2
+            exit 1
+          fi
+
+          runuser -u builder -- makepkg --printsrcinfo > .SRCINFO.generated
+          diff --unified .SRCINFO .SRCINFO.generated
+          rm .SRCINFO.generated
+
+      - name: Build Arch package
+        shell: bash
+        run: |
+          cp scripts/screenshot-ocr.sh screenshot-ocr.sh
+          chown -R builder:builder "$GITHUB_WORKSPACE"
+          runuser -u builder -- makepkg --cleanbuild --noconfirm --nodeps
+          rm screenshot-ocr.sh
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          tag_name: ${{ steps.release.outputs.tag }}
+          files: "*.pkg.tar.zst"

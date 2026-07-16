@@ -61,7 +61,7 @@ fi
 # ── Call Mistral OCR API ───────────────────────────────────────────
 cat > "$PAYLOAD_FILE" <<ENDJSON
 {
-  "model": "mistral-ocr-latest",
+  "model": "mistral-ocr-4-0",
   "document": {
     "type": "image_url",
     "image_url": "data:image/png;base64,${B64}"
