@@ -37,7 +37,9 @@ jobs:
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
       - name: Create package builder
-        run: useradd --create-home builder
+        run: |
+          useradd --create-home builder
+          chown builder:builder "$GITHUB_WORKSPACE"
 
       - name: Prepare release metadata
         if: github.event_name == 'workflow_dispatch'
